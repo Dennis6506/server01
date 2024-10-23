@@ -41,6 +41,57 @@ app.get("/", (req, res) => {
 	res.send("首頁");
 });
 
+app.post("/api/users/login", upload.none(), (req, res) => {
+	const { account, password } = req.body;
+	let message = `${account} 登入成功`;
+   
+	const user = db.data.user.find(
+	 (u) => u.account == account && u.password == password
+	);
+   
+	if (!user) {
+	 message = "登入失敗";
+	 return res.status(404).json({ result: "fail", message });
+	}
+   
+	//將帳號密碼押入token,並傳入密鑰
+	let token = jwt.sign(
+	 {
+	  account: user.account,
+	  name: user.name,
+	  mail: user.mail,
+	  head: user.head,
+	 },
+	 process.env.SECRET_KEY,
+	 {
+	  expiresIn: "30m",
+	 }
+	);
+   
+	res.status(200).json({ result: "success", message, data: token });
+   });
+   
+   app.get("/api/users/logout", checkToken, (req, res) => {
+	console.log(req.decoded); //從checkToken取得的
+	let message = `登出成功`;
+   
+	//核發一個失效的token(一拿到即過期)
+	let token = jwt.sign(
+	 {
+	  account: req.decoded.account,
+	  name: req.decoded.name,
+	  mail: req.decoded.mail,
+	  head: req.decoded.head,
+	 },
+	 process.env.SECRET_KEY,
+	 {
+	  expiresIn: "-10s",
+	 }
+	);
+   
+	res.status(200).json({ result: "success", message, data: token });
+   });
+
 app.listen(port, () => {
 	console.log(`server is running at http://localhost:${port}`);
 });
